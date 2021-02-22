@@ -1,0 +1,42 @@
+{
+  "name": "mp-mqtt",
+  "version": "0.0.1",
+  "description": "微信小程序版 MQTT.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hcl2020/mp-mqtt.git"
+  },
+  "keywords": [
+    "wechat",
+    "miniprograme",
+    "微信",
+    "小程序",
+    "mp",
+    "wxapp",
+    "weapp",
+    "wx",
+    "weixin",
+    "uniapp",
+    "mqtt",
+    "mqtt.js"
+  ],
+  "author": {
+    "name": "AmazingPromise",
+    "url": "https://github.com/hcl2020"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hcl2020/mp-mqtt/issues"
+  },
+  "homepage": "https://github.com/hcl2020/mp-mqtt#readme",
+  "dependencies": {
+    "mqtt": "^4.2.6"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.3"
+  }
+}
