@@ -1,4 +1,4 @@
-let connect = require('mqtt/lib/connect');
+let connect = require('./lib');
 
 module.exports = connect;
 module.exports.connect = connect;
