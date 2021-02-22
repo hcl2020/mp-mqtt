@@ -220,7 +220,7 @@ mqtt-packet@^6.6.0:
     debug "^4.1.1"
     process-nextick-args "^2.0.1"
 
-mqtt@^4.2.6:
+mqtt@4.2.6:
   version "4.2.6"
   resolved "https://mirrors.huaweicloud.com/repository/npm/mqtt/-/mqtt-4.2.6.tgz#b655547a9cfb3d86bfb398948b8dbb37e2e3bfd0"
   dependencies:

@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/hcl2020/mp-mqtt#readme",
   "dependencies": {
-    "mqtt": "^4.2.6"
+    "mqtt": "4.2.6"
   },
   "devDependencies": {
     "typescript": "^4.1.3"
