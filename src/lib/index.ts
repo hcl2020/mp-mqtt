@@ -1,4 +1,4 @@
-'use strict';
+// @ts-nocheck
 
 var MqttClient = require('mqtt/lib/client');
 var Store = require('mqtt/lib/store');

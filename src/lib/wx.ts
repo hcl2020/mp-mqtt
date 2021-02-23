@@ -1,4 +1,4 @@
-'use strict';
+// @ts-nocheck
 
 var Transform = require('readable-stream').Transform;
 var duplexify = require('duplexify');
