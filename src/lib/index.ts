@@ -1,33 +1,24 @@
-import { MqttClient as IMqttClient, Store as IStore } from 'mqtt';
+import { MqttClient as IMqttClient, Store as IStore, IClientOptions } from 'mqtt';
 import createDebug from 'debug';
 import * as url from 'url';
+import { buildStream as wxProtocol } from './wx';
 
 type IMqttClientConstructor = typeof IMqttClient;
 type IStoreConstructor = typeof IStore;
 
 let MqttClient: IMqttClientConstructor = require('mqtt/lib/client');
 let Store: IStoreConstructor = require('mqtt/lib/store');
-
-let protocols: any = {};
-
-// @ts-ignore
-if ((typeof process !== 'undefined' && process.title !== 'browser') || typeof __webpack_require__ !== 'function') {
-  protocols.mqtt = require('mqtt/lib/connect/tcp');
-  protocols.tcp = require('mqtt/lib/connect/tcp');
-  protocols.ssl = require('mqtt/lib/connect/tls');
-  protocols.tls = require('mqtt/lib/connect/tls');
-  protocols.mqtts = require('mqtt/lib/connect/tls');
-} else {
-  protocols.wx = require('./wx').default;
-  protocols.wxs = require('./wx').default;
-
-  protocols.ali = require('mqtt/lib/connect/ali');
-  protocols.alis = require('mqtt/lib/connect/ali');
-}
 let debug = createDebug('mqttjs');
 
-protocols.ws = require('mqtt/lib/connect/ws');
-protocols.wss = require('mqtt/lib/connect/ws');
+// TODO:兼容wx和ws协议
+let protocols: Record<string, typeof wxProtocol | undefined> = {
+  wx: wxProtocol,
+  wxs: wxProtocol,
+  ali: require('mqtt/lib/connect/ali'),
+  alis: require('mqtt/lib/connect/ali'),
+  ws: require('mqtt/lib/connect/ws'),
+  wss: require('mqtt/lib/connect/ws')
+};
 
 /**
  * Parse the auth attribute and merge username and password in the options object.
@@ -52,7 +43,7 @@ function parseAuthOptions(opts: any) {
  * @param {String} [brokerUrl] - url of the broker, optional
  * @param {Object} opts - see MqttClient#constructor
  */
-function connect(brokerUrl: any, opts: any) {
+function connect(brokerUrl: any, opts: any): IMqttClient {
   debug('connecting to an MQTT broker...');
   if (typeof brokerUrl === 'object' && !opts) {
     opts = brokerUrl;
@@ -130,7 +121,7 @@ function connect(brokerUrl: any, opts: any) {
     opts.defaultProtocol = opts.protocol;
   }
 
-  function wrapper(client: any) {
+  let client = new MqttClient((client: any) => {
     if (opts.servers) {
       if (!client._reconnectCount || client._reconnectCount === opts.servers.length) {
         client._reconnectCount = 0;
@@ -147,9 +138,9 @@ function connect(brokerUrl: any, opts: any) {
     }
 
     debug('calling streambuilder for', opts.protocol);
-    return protocols[opts.protocol](client, opts);
-  }
-  let client = new MqttClient(wrapper, opts);
+    return protocols[opts.protocol]?.(client, opts);
+  }, opts);
+
   client.on('error', function () {
     /* Automatically set up client error handling */
   });
