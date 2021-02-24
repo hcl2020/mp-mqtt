@@ -1,6 +1,6 @@
-let lib = require('./lib');
+import { connect, MqttClient, Store } from './lib';
+export { connect, MqttClient, Store };
+export default connect;
 
-module.exports = lib;
-module.exports.connect = lib;
-module.exports.MqttClient = lib.MqttClient;
-module.exports.Store = lib.Store;
+import type * as Types from 'mqtt';
+export type { Types };

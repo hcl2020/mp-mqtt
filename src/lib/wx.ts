@@ -1,12 +1,10 @@
-// @ts-nocheck
-
-var Transform = require('readable-stream').Transform;
-var duplexify = require('duplexify');
+import { Transform } from 'readable-stream';
+import * as duplexify from 'duplexify';
 
 /* global wx */
-var socketTask;
-var proxy;
-var stream;
+var socketTask: any;
+var proxy: any;
+var stream: any;
 
 function buildProxy() {
   var proxy = new Transform();
@@ -16,7 +14,7 @@ function buildProxy() {
       success: function () {
         next();
       },
-      fail: function (errMsg) {
+      fail: function (errMsg: any) {
         next(new Error(errMsg));
       }
     });
@@ -32,7 +30,7 @@ function buildProxy() {
   return proxy;
 }
 
-function setDefaultOpts(opts) {
+function setDefaultOpts(opts: any) {
   if (!opts.hostname) {
     opts.hostname = 'localhost';
   }
@@ -45,7 +43,7 @@ function setDefaultOpts(opts) {
   }
 }
 
-function buildUrl(opts, client) {
+function buildUrl(opts: any, client: any) {
   var protocol = opts.protocol === 'wxs' ? 'wss' : 'ws';
   var url = protocol + '://' + opts.hostname + opts.path;
   if (opts.port && opts.port !== 80 && opts.port !== 443) {
@@ -64,7 +62,7 @@ function bindEventHandler() {
     stream.emit('connect');
   });
 
-  socketTask.onMessage(function (res) {
+  socketTask.onMessage(function (res: any) {
     var data = res.data;
 
     // data = data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(data, 'utf8');
@@ -81,12 +79,12 @@ function bindEventHandler() {
     stream.destroy();
   });
 
-  socketTask.onError(function (res) {
+  socketTask.onError(function (res: any) {
     stream.destroy(new Error(res.errMsg));
   });
 }
 
-function buildStream(client, opts) {
+function buildStream(client: any, opts: any) {
   opts.hostname = opts.hostname || opts.host;
 
   if (!opts.hostname) {
@@ -105,7 +103,7 @@ function buildStream(client, opts) {
 
   proxy = buildProxy();
   stream = duplexify.obj();
-  stream._destroy = function (err, cb) {
+  stream._destroy = function (err: any, cb: any) {
     socketTask.close({
       success: function () {
         cb && cb(err);
@@ -117,11 +115,10 @@ function buildStream(client, opts) {
   stream.destroy = function () {
     stream.destroy = destroyRef;
 
-    var self = this;
-    setTimeout(function () {
+    setTimeout(() => {
       socketTask.close({
         fail: function () {
-          self._destroy(new Error());
+          this._destroy(new Error());
         }
       });
     }, 0);
@@ -132,4 +129,5 @@ function buildStream(client, opts) {
   return stream;
 }
 
-module.exports = buildStream;
+export { buildStream };
+export default buildStream;

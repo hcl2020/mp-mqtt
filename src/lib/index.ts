@@ -1,14 +1,17 @@
-// @ts-nocheck
+import { MqttClient as IMqttClient, Store as IStore } from 'mqtt';
+import _debug from 'debug';
+import * as url from 'url';
 
-var MqttClient = require('mqtt/lib/client');
-var Store = require('mqtt/lib/store');
-var url = require('url');
-var xtend = require('xtend');
-var debug = require('debug')('mqttjs');
+type IMqttClientConstructor = typeof IMqttClient;
+type IStoreConstructor = typeof IStore;
 
-var protocols = {};
+let MqttClient: IMqttClientConstructor = require('mqtt/lib/client');
+let Store: IStoreConstructor = require('mqtt/lib/store');
+let debug = _debug('mqttjs');
 
-// eslint-disable-next-line camelcase
+let protocols: any = {};
+
+// @ts-ignore
 if ((typeof process !== 'undefined' && process.title !== 'browser') || typeof __webpack_require__ !== 'function') {
   protocols.mqtt = require('mqtt/lib/connect/tcp');
   protocols.tcp = require('mqtt/lib/connect/tcp');
@@ -16,8 +19,8 @@ if ((typeof process !== 'undefined' && process.title !== 'browser') || typeof __
   protocols.tls = require('mqtt/lib/connect/tls');
   protocols.mqtts = require('mqtt/lib/connect/tls');
 } else {
-  protocols.wx = require('./wx');
-  protocols.wxs = require('./wx');
+  protocols.wx = require('./wx').default;
+  protocols.wxs = require('./wx').default;
 
   protocols.ali = require('mqtt/lib/connect/ali');
   protocols.alis = require('mqtt/lib/connect/ali');
@@ -30,8 +33,8 @@ protocols.wss = require('mqtt/lib/connect/ws');
  * Parse the auth attribute and merge username and password in the options object.
  *
  */
-function parseAuthOptions(opts) {
-  var matches;
+function parseAuthOptions(opts: any) {
+  let matches;
   if (opts.auth) {
     matches = opts.auth.match(/^(.+):(.+)$/);
     if (matches) {
@@ -49,7 +52,7 @@ function parseAuthOptions(opts) {
  * @param {String} [brokerUrl] - url of the broker, optional
  * @param {Object} opts - see MqttClient#constructor
  */
-function connect(brokerUrl, opts) {
+function connect(brokerUrl: any, opts: any) {
   debug('connecting to an MQTT broker...');
   if (typeof brokerUrl === 'object' && !opts) {
     opts = brokerUrl;
@@ -59,12 +62,13 @@ function connect(brokerUrl, opts) {
   opts = opts || {};
 
   if (brokerUrl) {
-    var parsed = url.parse(brokerUrl, true);
+    let parsed = url.parse(brokerUrl, true);
     if (parsed.port != null) {
+      // @ts-ignore
       parsed.port = Number(parsed.port);
     }
 
-    opts = xtend(parsed, opts);
+    opts = { ...parsed, ...opts };
 
     if (opts.protocol === null) {
       throw new Error('Missing protocol');
@@ -108,7 +112,7 @@ function connect(brokerUrl, opts) {
   }
 
   if (!protocols[opts.protocol]) {
-    var isSecure = ['mqtts', 'wss'].indexOf(opts.protocol) !== -1;
+    let isSecure = ['mqtts', 'wss'].indexOf(opts.protocol) !== -1;
     opts.protocol = ['mqtt', 'mqtts', 'ws', 'wss', 'wx', 'wxs', 'ali', 'alis'].filter(function (key, index) {
       if (isSecure && index % 2 === 0) {
         // Skip insecure protocols when requesting a secure one.
@@ -126,7 +130,7 @@ function connect(brokerUrl, opts) {
     opts.defaultProtocol = opts.protocol;
   }
 
-  function wrapper(client) {
+  function wrapper(client: any) {
     if (opts.servers) {
       if (!client._reconnectCount || client._reconnectCount === opts.servers.length) {
         client._reconnectCount = 0;
@@ -145,14 +149,11 @@ function connect(brokerUrl, opts) {
     debug('calling streambuilder for', opts.protocol);
     return protocols[opts.protocol](client, opts);
   }
-  var client = new MqttClient(wrapper, opts);
+  let client = new MqttClient(wrapper, opts);
   client.on('error', function () {
     /* Automatically set up client error handling */
   });
   return client;
 }
 
-module.exports = connect;
-module.exports.connect = connect;
-module.exports.MqttClient = MqttClient;
-module.exports.Store = Store;
+export { connect, MqttClient, Store };
