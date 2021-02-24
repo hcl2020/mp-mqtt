@@ -1,5 +1,5 @@
 import { MqttClient as IMqttClient, Store as IStore } from 'mqtt';
-import _debug from 'debug';
+import createDebug from 'debug';
 import * as url from 'url';
 
 type IMqttClientConstructor = typeof IMqttClient;
@@ -7,7 +7,6 @@ type IStoreConstructor = typeof IStore;
 
 let MqttClient: IMqttClientConstructor = require('mqtt/lib/client');
 let Store: IStoreConstructor = require('mqtt/lib/store');
-let debug = _debug('mqttjs');
 
 let protocols: any = {};
 
@@ -25,6 +24,7 @@ if ((typeof process !== 'undefined' && process.title !== 'browser') || typeof __
   protocols.ali = require('mqtt/lib/connect/ali');
   protocols.alis = require('mqtt/lib/connect/ali');
 }
+let debug = createDebug('mqttjs');
 
 protocols.ws = require('mqtt/lib/connect/ws');
 protocols.wss = require('mqtt/lib/connect/ws');
