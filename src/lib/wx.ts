@@ -1,13 +1,14 @@
+import type { MqttClient as IMqttClient, IClientOptions } from 'mqtt';
 import { Transform } from 'readable-stream';
 import * as duplexify from 'duplexify';
 
 /* global wx */
-var socketTask: any;
-var proxy: any;
-var stream: any;
+let socketTask: WechatMiniprogram.SocketTask;
+let proxy: Transform;
+let stream: duplexify.Duplexify;
 
 function buildProxy() {
-  var proxy = new Transform();
+  let proxy = new Transform();
   proxy._write = function (chunk, encoding, next) {
     socketTask.send({
       data: chunk, // .buffer,
@@ -44,8 +45,8 @@ function setDefaultOpts(opts: any) {
 }
 
 function buildUrl(opts: any, client: any) {
-  var protocol = opts.protocol === 'wxs' ? 'wss' : 'ws';
-  var url = protocol + '://' + opts.hostname + opts.path;
+  let protocol = opts.protocol === 'wxs' ? 'wss' : 'ws';
+  let url = protocol + '://' + opts.hostname + opts.path;
   if (opts.port && opts.port !== 80 && opts.port !== 443) {
     url = protocol + '://' + opts.hostname + ':' + opts.port + opts.path;
   }
@@ -56,14 +57,14 @@ function buildUrl(opts: any, client: any) {
 }
 
 function bindEventHandler() {
-  socketTask.onOpen(function () {
+  socketTask.onOpen(() => {
     stream.setReadable(proxy);
     stream.setWritable(proxy);
     stream.emit('connect');
   });
 
-  socketTask.onMessage(function (res: any) {
-    var data = res.data;
+  socketTask.onMessage((res: any) => {
+    let data = res.data;
 
     // data = data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(data, 'utf8');
 
@@ -74,51 +75,49 @@ function bindEventHandler() {
     proxy.push(data);
   });
 
-  socketTask.onClose(function () {
+  socketTask.onClose(() => {
     stream.end();
     stream.destroy();
   });
 
-  socketTask.onError(function (res: any) {
+  socketTask.onError((res: any) => {
     stream.destroy(new Error(res.errMsg));
   });
 }
 
-function buildStream(client: any, opts: any) {
+function buildStream(client: IMqttClient, opts: IClientOptions) {
   opts.hostname = opts.hostname || opts.host;
 
   if (!opts.hostname) {
     throw new Error('Could not determine host. Specify host manually.');
   }
 
-  var websocketSubProtocol = opts.protocolId === 'MQIsdp' && opts.protocolVersion === 3 ? 'mqttv3.1' : 'mqtt';
+  let websocketSubProtocol = opts.protocolId === 'MQIsdp' && opts.protocolVersion === 3 ? 'mqttv3.1' : 'mqtt';
 
   setDefaultOpts(opts);
 
-  var url = buildUrl(opts, client);
-  socketTask = wx.connectSocket({
-    url: url,
-    protocols: [websocketSubProtocol]
-  });
+  let url = buildUrl(opts, client);
+  socketTask = wx.connectSocket({ url, protocols: [websocketSubProtocol] });
 
   proxy = buildProxy();
   stream = duplexify.obj();
-  stream._destroy = function (err: any, cb: any) {
+
+  stream._destroy = function _destroy(err: Error | null, cb: (error: Error | null) => void) {
     socketTask.close({
-      success: function () {
+      success() {
         cb && cb(err);
       }
     });
   };
 
-  var destroyRef = stream.destroy;
-  stream.destroy = function () {
+  let destroyRef = stream.destroy;
+  stream.destroy = function destroy() {
     stream.destroy = destroyRef;
 
     setTimeout(() => {
       socketTask.close({
-        fail: () => {
-          stream._destroy(new Error());
+        fail() {
+          stream._destroy(new Error(), () => {});
         }
       });
     }, 0);
@@ -130,4 +129,3 @@ function buildStream(client: any, opts: any) {
 }
 
 export { buildStream };
-export default buildStream;

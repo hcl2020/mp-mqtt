@@ -1,4 +1,4 @@
-import { MqttClient as IMqttClient, Store as IStore, IClientOptions } from 'mqtt';
+import type { MqttClient as IMqttClient, Store as IStore, IClientOptions } from 'mqtt';
 import createDebug from 'debug';
 import * as url from 'url';
 import { buildStream as wxProtocol } from './wx';
@@ -14,11 +14,14 @@ let debug = createDebug('mqttjs');
 let protocols: Record<string, typeof wxProtocol | undefined> = {
   wx: wxProtocol,
   wxs: wxProtocol,
-  ali: require('mqtt/lib/connect/ali'),
-  alis: require('mqtt/lib/connect/ali'),
   ws: require('mqtt/lib/connect/ws'),
   wss: require('mqtt/lib/connect/ws')
 };
+
+function getNormalizeProtocol(protocol?: string) {
+  // TODO: 根据运行时环境自动处理
+  return protocol as 'wx' | 'wxs' | 'ws' | 'wss';
+}
 
 /**
  * Parse the auth attribute and merge username and password in the options object.
@@ -43,14 +46,21 @@ function parseAuthOptions(opts: any) {
  * @param {String} [brokerUrl] - url of the broker, optional
  * @param {Object} opts - see MqttClient#constructor
  */
-function connect(brokerUrl: any, opts: any): IMqttClient {
-  debug('connecting to an MQTT broker...');
-  if (typeof brokerUrl === 'object' && !opts) {
-    opts = brokerUrl;
-    brokerUrl = null;
-  }
 
-  opts = opts || {};
+function connect(opts: IClientOptions): IMqttClient;
+function connect(brokerUrl: string, opts?: IClientOptions): IMqttClient;
+function connect(opts_or_brokerUrl: IClientOptions | string, _opts?: IClientOptions): IMqttClient {
+  debug('connecting to an MQTT broker...');
+
+  let brokerUrl: null | string = null;
+  let opts: IClientOptions & { query?: any } = {};
+
+  if (typeof opts_or_brokerUrl === 'string') {
+    brokerUrl = opts_or_brokerUrl;
+    opts = _opts || {};
+  } else {
+    opts = opts_or_brokerUrl || {};
+  }
 
   if (brokerUrl) {
     let parsed = url.parse(brokerUrl, true);
@@ -59,92 +69,57 @@ function connect(brokerUrl: any, opts: any): IMqttClient {
       parsed.port = Number(parsed.port);
     }
 
-    opts = { ...parsed, ...opts };
+    opts = { ...parsed, ...opts } as IClientOptions;
 
-    if (opts.protocol === null) {
+    if (opts.protocol === null || opts.protocol === undefined) {
       throw new Error('Missing protocol');
     }
 
-    opts.protocol = opts.protocol.replace(/:$/, '');
+    opts.protocol = opts.protocol.replace(/:$/, '') as any;
   }
 
   // merge in the auth options if supplied
   parseAuthOptions(opts);
 
   // support clientId passed in the query string of the url
+
   if (opts.query && typeof opts.query.clientId === 'string') {
     opts.clientId = opts.query.clientId;
-  }
-
-  if (opts.cert && opts.key) {
-    if (opts.protocol) {
-      if (['mqtts', 'wss', 'wxs', 'alis'].indexOf(opts.protocol) === -1) {
-        switch (opts.protocol) {
-          case 'mqtt':
-            opts.protocol = 'mqtts';
-            break;
-          case 'ws':
-            opts.protocol = 'wss';
-            break;
-          case 'wx':
-            opts.protocol = 'wxs';
-            break;
-          case 'ali':
-            opts.protocol = 'alis';
-            break;
-          default:
-            throw new Error('Unknown protocol for secure connection: "' + opts.protocol + '"!');
-        }
-      }
-    } else {
-      // A cert and key was provided, however no protocol was specified, so we will throw an error.
-      throw new Error('Missing secure protocol key');
-    }
-  }
-
-  if (!protocols[opts.protocol]) {
-    let isSecure = ['mqtts', 'wss'].indexOf(opts.protocol) !== -1;
-    opts.protocol = ['mqtt', 'mqtts', 'ws', 'wss', 'wx', 'wxs', 'ali', 'alis'].filter(function (key, index) {
-      if (isSecure && index % 2 === 0) {
-        // Skip insecure protocols when requesting a secure one.
-        return false;
-      }
-      return typeof protocols[key] === 'function';
-    })[0];
   }
 
   if (opts.clean === false && !opts.clientId) {
     throw new Error('Missing clientId for unclean clients');
   }
 
-  if (opts.protocol) {
-    opts.defaultProtocol = opts.protocol;
+  let defaultProtocol = opts.protocol;
+  if (!opts.protocol || typeof protocols[opts.protocol] !== 'function') {
+    throw new Error('不支持的协议');
   }
 
-  let client = new MqttClient((client: any) => {
+  let _client = new MqttClient((client: any): any => {
     if (opts.servers) {
       if (!client._reconnectCount || client._reconnectCount === opts.servers.length) {
         client._reconnectCount = 0;
       }
 
-      opts.host = opts.servers[client._reconnectCount].host;
-      opts.port = opts.servers[client._reconnectCount].port;
-      opts.protocol = !opts.servers[client._reconnectCount].protocol
-        ? opts.defaultProtocol
-        : opts.servers[client._reconnectCount].protocol;
-      opts.hostname = opts.host;
-
+      let server = opts.servers[client._reconnectCount];
+      if (server) {
+        opts.host = server.host;
+        opts.port = server.port;
+        opts.protocol = getNormalizeProtocol(server.protocol || defaultProtocol);
+        opts.hostname = opts.host;
+      }
       client._reconnectCount++;
     }
 
     debug('calling streambuilder for', opts.protocol);
-    return protocols[opts.protocol]?.(client, opts);
+    return protocols[opts.protocol!]?.(client, opts);
   }, opts);
 
-  client.on('error', function () {
+  _client.on('error', function () {
     /* Automatically set up client error handling */
   });
-  return client;
+  return _client;
 }
 
 export { connect, MqttClient, Store };
