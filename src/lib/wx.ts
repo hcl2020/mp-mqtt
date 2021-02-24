@@ -117,8 +117,8 @@ function buildStream(client: any, opts: any) {
 
     setTimeout(() => {
       socketTask.close({
-        fail: function () {
-          this._destroy(new Error());
+        fail: () => {
+          stream._destroy(new Error());
         }
       });
     }, 0);
