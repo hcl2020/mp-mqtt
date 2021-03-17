@@ -10,8 +10,14 @@ let stream: duplexify.Duplexify;
 function buildProxy() {
   let proxy = new Transform();
   proxy._write = function (chunk, encoding, next) {
+    let data = chunk.buffer;
+    if (chunk.byteLength !== data.byteLength) {
+      // TODO: 取消 Uint8Array 的 polyfill, 从源头解决问题
+      data = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
+    }
     socketTask.send({
-      data: chunk, // .buffer,
+      // data: chunk.buffer,
+      data,
       success: function () {
         next();
       },
