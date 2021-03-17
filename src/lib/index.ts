@@ -3,6 +3,12 @@ import createDebug from 'debug';
 import * as url from 'url';
 import { buildStream as wxProtocol } from './wx';
 
+declare module 'mqtt/types/lib/client' {
+  interface MqttClient {
+    _reconnectCount: number;
+  }
+}
+
 type IMqttClientConstructor = typeof IMqttClient;
 type IStoreConstructor = typeof IStore;
 
@@ -96,7 +102,7 @@ function connect(opts_or_brokerUrl: IClientOptions | string, _opts?: IClientOpti
     throw new Error('不支持的协议');
   }
 
-  let _client = new MqttClient((client: any): any => {
+  let _client = new MqttClient(client => {
     if (opts.servers) {
       if (!client._reconnectCount || client._reconnectCount === opts.servers.length) {
         client._reconnectCount = 0;
@@ -113,7 +119,7 @@ function connect(opts_or_brokerUrl: IClientOptions | string, _opts?: IClientOpti
     }
 
     debug('calling streambuilder for', opts.protocol);
-    return protocols[opts.protocol!]?.(client, opts);
+    return protocols[opts.protocol!]!(client, opts)!;
   }, opts);
 
   _client.on('error', function () {
